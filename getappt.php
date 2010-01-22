@@ -66,9 +66,8 @@
 	$origpathinfo=$_SERVER["PATH_INFO"];
 	$fields=split('/',$origpathinfo);
 	$userfeedtogen=$fields[1];
-	$apptId= urldecode($fields[2]);
-	
-	
+	$apptId= rawurldecode($fields[2]);
+
 	#
 	#Let's see if we can find this calendar in the list of PFIDs from the config file. 
 	# if not we need to bail....
@@ -131,7 +130,7 @@
 		print "<html><head><title>" . $apptDetails->Subject . "</title></head><body>";
 		print $ApptSummary;
 		print '<hr><div style="border: 1px dotted; padding:25px">';
-		print $apptBody;
+		print $apptBodyFull;
 		
 	
 

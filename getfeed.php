@@ -115,7 +115,7 @@
 		$debuglog .= '<div><hr><p>Result</p><pre>' . print_r($result,true) . "</pre></div>";
 	}
 	
-	include("FeedWriter.php");
+	include("FeedWriter/FeedWriter.php");
 	$CalFeed= new FeedWriter(ATOM);
 	$CalFeed->setTitle('Exchange Calendar Feed');
 	$CalFeed->setLink('./');
@@ -150,7 +150,10 @@
 	/*	print "<pre>";
 		print_r($itemDetails);
 		print "</pre>"; */
-		$ApptItem->setLink("/ewscalendarfeed/getappt/" . $userfeedtogen . "/".urlencode($apptDetails->ItemId->Id));
+
+		$ApptItem->setLink($cfg_option['urlpath']. "/getappt/" . $userfeedtogen . "/".rawurlencode($apptDetails->ItemId->Id));
+#		$ApptItem->setLink("/ewscalendarfeed/getappt/" . $userfeedtogen . "/".$apptDetails->ItemId->Id);
+
 		$ApptItem->setDate( $apptDetails->Start);
 		$start=rtrim($apptDetails->Start,'zZ');
 		
