@@ -111,16 +111,18 @@ if (is_array($result->ResponseMessages->FindFolderResponseMessage->RootFolder->F
 };
 foreach ($folders as $folder){
 	#set up some vars to help format the output....
-	$nl = "\n";$prefix="";$postfix="";
+	$nl = "\n";$prefix="";$postfix="";$highlight_begin="["; $highlight_end="]";
 	if ($asCGI){
 		#change output format stuff if we're running as CGI
 		$prefix= '<tr><td>';
 		$postfix = '</tr></td>';
 		$nl = "<br>";
+		$highlight_begin="<b><font color='#0000ff'>";
+		$highlight_end="</font></b>";
 		print '<div><table border="1px" cellpadding="15">';
 	}
 	
-	print  $prefix . "Calendar name is <b><font color='#0000ff'>" . $folder->DisplayName . "</font></b>$nl";
+	print  $prefix . "Calendar name is " . $higlight_begin . $folder->DisplayName . $higlight_end . "$nl";
 	print "\tFolder ID is [" . $folder->ParentFolderId->Id . "]$nl";
 	print "\tChangeKey is [" . $folder->ParentFolderId->ChangeKey . "]$nl" . $postfix;
 	if ($asCGI){
