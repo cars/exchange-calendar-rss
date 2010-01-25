@@ -31,7 +31,7 @@ $cfg_option['password'] = "";
 
 
 #auth method should be either 'basic' or 'NTLM'
-$cfg_option['authmethod'] = 'NTLM';
+$cfg_option['auth'] = 'NTLM';
 
 #Path to the "ported" WSDL file for the Exchange server we're going to talk to. 
 $cfg_option['wsdl'] = "./e2k7_wsdl/services.wsdl";
