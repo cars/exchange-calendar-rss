@@ -123,8 +123,8 @@ foreach ($folders as $folder){
 	}
 	
 	print  $prefix . "Calendar name is " . $higlight_begin . $folder->DisplayName . $higlight_end . "$nl";
-	print "\tFolder ID is [" . $folder->ParentFolderId->Id . "]$nl";
-	print "\tChangeKey is [" . $folder->ParentFolderId->ChangeKey . "]$nl" . $postfix;
+	print "\tFolder ID is [" . $folder->FolderId->Id . "]$nl";
+	print "\tChangeKey is [" . $folder->FolderId->ChangeKey . "]$nl" . $postfix;
 	if ($asCGI){
 		print "</table></div><br>";
 	}
@@ -132,6 +132,8 @@ foreach ($folders as $folder){
 	
 }
 
-print "</pre></body></html>";
+if ( $asCGI) {
+	print "</pre></body></html>";
+};
 ?>
 
