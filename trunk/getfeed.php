@@ -61,6 +61,13 @@
 						      );
 	};
 	
+	#Set the header for the SOAP Client to be right version of Exchange. 
+	$rsv = array('Version'=>$cfg_option['exchangever']);
+	$header = new SoapHeader('http://schemas.microsoft.com/exchange/services/2006/types',
+                         'RequestServerVersion',
+                         $rsv);
+	$client->__setSoapHeaders($header);
+	
 	# let's parse the path info to figure out the calendard we want to get
 	# PathInfo should be something like: /testuser1-default
 	$origpathinfo=$_SERVER["PATH_INFO"];
@@ -85,7 +92,7 @@
 	$FindItemsRequest = null;
         $FindItemsRequest->Traversal = "Shallow";
         $FindItemsRequest->ItemShape->BaseShape = "AllProperties";
-	$FindItemsRequest->ParentFolderIds->FolderId->Id = $PFIDs[$userfeedtogen][0];
+	$FindItemsRequest->ParentFolderIds->FolderId->Id = $PFIDs[$userfeedtogen];
 	# Change key isn't needed.
 	#$FindItemsRequest->ParentFolderIds->FolderId->ChangeKey = $PFIDs[$userfeedtogen][1];
 	
