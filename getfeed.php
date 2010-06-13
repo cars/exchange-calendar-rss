@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
+/* Jun 2010 - Removed Changekey in  FindIte, request since we don't need it */
 /* Jan 2010 - Carlos Tronco -  cars at LosTroncos dot org */
 	
 	#Do we want to log debug output? If so it's gonna be added as an additional item
@@ -86,7 +86,8 @@
         $FindItemsRequest->Traversal = "Shallow";
         $FindItemsRequest->ItemShape->BaseShape = "AllProperties";
 	$FindItemsRequest->ParentFolderIds->FolderId->Id = $PFIDs[$userfeedtogen][0];
-	$FindItemsRequest->ParentFolderIds->FolderId->ChangeKey = $PFIDs[$userfeedtogen][1];
+	# Change key isn't needed.
+	#$FindItemsRequest->ParentFolderIds->FolderId->ChangeKey = $PFIDs[$userfeedtogen][1];
 	
 	#Let's try to get the list by making the SOAP call....
         $result=$client->FindItem($FindItemsRequest);
