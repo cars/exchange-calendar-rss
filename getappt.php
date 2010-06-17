@@ -19,6 +19,8 @@
 */
 
 /* Jan 2010 - Carlos Tronco -  cars at LosTroncos dot org */
+/* Jun 2010 - Carlos Tronco - Fixed issue with "/" in ApptIds. Added SOAP version
+			piece. 				   */
 	
 	#Do we want to log debug output? If so it's gonna be added as an additional item
 	# in the feed itself. 
@@ -64,15 +66,48 @@
 	# let's parse the path info to figure out the calendard we want to get
 	# PathInfo should be something like: /testuser1-default
 	$origpathinfo=$_SERVER["PATH_INFO"];
+	#Split PathInfo into user and ApptId portion
+	# There will be some cases where the ApptId contains "/" as part of the ID.
+	# ex:  /db1user1/TLYGS7NfYAM8WI/TAAAAAAAdAABrV/VpTLYGS7NfYAM8WI/TAAAFK0wfAAA=
+	#  would look at calendar for db1user and look for the appt with an ID of
+	#  TLYGS7NfYAM8WI/TAAAAAAAdAABrV/VpTLYGS7NfYAM8WI/TAAAFK0wfAAA=
+	# however when we split this into sections we lose any "/" so we need to add them
+	# back in. 
+	#  
 	$fields=split('/',$origpathinfo);
-	$userfeedtogen=$fields[1];
-	$apptId= rawurldecode($fields[2]);
 
+	$userfeedtogen=$fields[1];
+	$urlfields= array_slice($fields,2);
+	foreach ($urlfields as $urlfield){
+		#add array portion and missing "/"
+		$apptId.=$urlfield . "/";
+	}
+	#lets trim the trailing "/" as its extra. 
+	$apptId = substr($apptId,0,strlen($apptId)-1);
+	
+	if ($scriptdebug){
+		$debuglog .=  "</pre><hr><p></p>\n<p>GetItem pre-call</p><pre>";
+		$debuglog .= "<p>ApptId</p><pre>" . $apptId . "</pre>\n";
+		$debuglog .= "<p>fields2</p><pre>" . $fields[2] .  $fields[3] . "</pre>\n";
+		$debuglog .= "<p>origpathinfo</p><pre>".$origpathinfo . " </pre>";
+		$debuglog .= "<p>pathinfo</p><pre>".$origpathinfo . " </pre>";		
+		
+		
+	}
+	
 	#
+	#Set the header for the SOAP Client to be right version of Exchange. 
+	$rsv = array('Version'=>$cfg_option['exchangever']);
+	$header = new SoapHeader('http://schemas.microsoft.com/exchange/services/2006/types',
+                         'RequestServerVersion',
+                         $rsv);
+	$client->__setSoapHeaders($header);
+	
+	
 	#Let's see if we can find this calendar in the list of PFIDs from the config file. 
 	# if not we need to bail....
 	if (!isset($PFIDs[$userfeedtogen])) {
-		header("HTTP/1.1 404 404 Unknown User and/or Calendar");
+		#header("HTTP/1.1 404 404 Unknown User and/or Calendar");
 		print "<html><head><title>404: retrieving calendar[" . $userfeedtogen ."]</title></head><body>I don't seem to be aware of any calendars called [" . $userfeedtogen."]";
 		print "<p>here are calendars I know about\n<ul>";
 		foreach (array_keys($PFIDs) as $k) {
@@ -91,12 +126,15 @@
 		if ($scriptdebug) {
 			$debuglog .=  "<hr><p>Appt used to build GetItem Request</p><pre>" . print_r($appt,true);
 			$debuglog .=  "</pre><hr><p></p>\n<p>GetItem pre-call</p><pre>";
-			$debuglog .= print_r($GetItem,true);
+			$debuglog .= print_r($GetItemRequest,true);
 			$debuglog .=  "</pre>";
 		};
 		
                 $apptResult= $client->GetItem($GetItemRequest);
-		
+		if ($scriptdebug){
+			$debuglog .= "<hr><p>GetItem RequestResult";
+			$debuglog .= "<hr><pre>" .print_r($apptResult,true) . "</pre>";
+		}
                 $apptDetails=$apptResult->ResponseMessages->GetItemResponseMessage->Items->CalendarItem;
 		
                 
@@ -144,6 +182,15 @@
 		$debugdescription.="parsed fields\n";
 		$debugdescription.="Fields[0] =[". $fields[0] . "]\n";
 		$debugdescription.="Fields[1] =[". $fields[1] . "]\n";
+		$debugdescription.="Fields[2] =[". $fields[2] . "]\n";
+		$debugdescription.="Fields[2] =[". $fields[3] . "]\n";
+		$debugdescription.="Fields[2] =[". $fields[4] . "]\n";
+		$debugdescription.="Fields[2] =[". $fields[5] . "]\n";
+		$debugdescription.="Fields[2] =[". $fields[6] . "]\n";
+		$debugdescription.="Fields[2] =[". $fields[7] . "]\n";
+#		$debugdescription.="Fields[2] =[". $fields[2] . "]\n";		
+		$debugdescription.="Length of Fields =[". count($fields) . "]\n";
+		
 		$debugdescription.="UserFeedtoGen is " . $userfeedtogen . "\n";
 		$debugdescription.="debug" . $_SERVER[argv][0] . "\n";
 		$debugdescription.="</PRE>";
