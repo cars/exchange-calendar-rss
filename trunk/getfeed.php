@@ -93,6 +93,43 @@
         $FindItemsRequest->Traversal = "Shallow";
         $FindItemsRequest->ItemShape->BaseShape = "AllProperties";
 	$FindItemsRequest->ParentFolderIds->FolderId->Id = $PFIDs[$userfeedtogen];
+        #To deal with recurring items so they show up as individual appts rather than just
+        # getting a single instance of the master we need to specify a CalendarView as
+        # part of the request
+        # Can't assume DateTime and DateInterval functions are available since most seem to show
+        # up in PHP version 5.3 or higher
+        # we'll try this way to get the start and end dates (should work with 5.2) to specify the view. 
+	#
+	#Get Today's date
+	$todaydate = getdate();
+	$Today = $todaydate['year'] . '-' . $todaydate['mon'] . '-' . $todaydate['mday'];
+        # figure out our Startdate (defaults to 3 weeks ago [i.e. 21 days]) by creating a timestamp
+        # and letting mktime figure out the date for us.
+        $tmpdtstring =  mktime(0,0,0,$todaydate['mon'],$todaydate['mday']-21,$todaydate['year']);
+        $tmpdtstring = "@" . $tmpdtstring;
+        # Convert timestamp to DateTime object
+        $StartDate = new DateTime($tmpdtstring);
+        # figure out our EndDate (defaults to 4 weeks from now ago [i.e. 28 days])
+        $tmpdtstring =  mktime(0,0,0,$todaydate['mon'],$todaydate['mday']+28,$todaydate['year']);
+        $tmpdtstring = "@" . $tmpdtstring;
+        # Convert timestamp to DateTime object
+        $EndDate = new DateTime($tmpdtstring);
+        $StartDatestring = $StartDate->format('Y-m-d') . 'T00:00:00';  # ex:"2010-05-01T00:00:00"
+        $EndDatestring   = $EndDate->format('Y-m-d') . 'T00:00:00';  # ex:"2011-06-01T00:00:00" 
+
+	$FindItemsRequest->CalendarView->StartDate = $StartDatestring;
+	$FindItemsRequest->CalendarView->EndDate   = $EndDatestring;  
+	
+	if ($scriptdebug){
+	#If we're debugging add the apps the and result info to the debug log. 
+		$debuglog .= '<hr><p>Result</p><pre>' . print_r($result,true) . "</pre>";
+		$debuglog .= '<hr><p>StartDate</p><pre>' . print_r($StartDate,true) . '</pre>';
+		$debuglog .= '<hr><p>GetDate</p><pre>' . print_r($getdate,true) . '</pre>';
+		$debuglog .= '<hr><p>Today</p><pre>' . $Today . '</pre>';
+		$debuglog .= '<hr><p>StartDate Formatted</p><pre>' . $StartDate->format('Y-m-d') . '</pre>';
+       		$debuglog .= '<hr><p>EndDate Formatted</p><pre>' . $EndDate->format('Y-m-d') . '</pre>';
+	}
+	
 	# Change key isn't needed.
 	#$FindItemsRequest->ParentFolderIds->FolderId->ChangeKey = $PFIDs[$userfeedtogen][1];
 	
@@ -125,13 +162,15 @@
 	
 	include("FeedWriter/FeedWriter.php");
 	$CalFeed= new FeedWriter(ATOM);
-	$CalFeed->setTitle('Exchange Calendar Feed');
+	$CalFeed->setTitle('Exchange Calendar Feed from ' . $StartDate->format('D M j Y') ." to " . $EndDate->format('D M j Y'));
 	$CalFeed->setLink('./');
 	$CalFeed->setChannelElement('author',array('name'=>'Carlos Tronco'));
 	$CalFeed->setChannelElement('updated', date(DATE_ATOM , time()));
 	
 	#Let's iterate through the list of appts and get each appt and get more info than FindItem gave us.
         foreach ($appts as $appt) {
+            #Let's _not_ show appts/meetings marked as Private....
+            if ($appt->Sensitivity  == 'Normal') {
 		#Build the XML/object for the GetItemRequest
                 $GetItemRequest=null;
                 $GetItemRequest->ItemShape->BaseShape = "AllProperties";
@@ -144,7 +183,7 @@
 			$debuglog .=  "ItemId - Id = [" . $appt->ItemId->Id . "]\n";
 			$debuglog .=  "ItemId - ChangeKey = [" . $appt->ItemId->ChangeKey . "]\n";
 			$debuglog .=  "</pre><hr><p></p>\n<p>GetItem pre-call</p><pre>";
-			$debuglog .= print_r($GetItem,true);
+			$debuglog .= print_r($GetItemRequest,true);
 			$debuglog .=  "</pre>";
 		};
 		
@@ -155,18 +194,22 @@
                 
                 $itemDetails = $apptDetails->ItemId;
 		$ApptItem->setTitle($apptDetails->Subject);
-	/*	print "<pre>";
-		print_r($itemDetails);
-		print "</pre>"; */
+		if ($scriptdebug) {
+			$debuglog .=  "<hr><p>GetItem Appt Result</p><pre>" . print_r($appt,true);
+			$debuglog .=  "</pre><hr><p>Appt Info</p><pre>";
+			$debuglog .=  "ItemId - Id = [" . $appt->ItemId->Id . "]\n";
+			$debuglog .=  "ItemId - ChangeKey = [" . $appt->ItemId->ChangeKey . "]\n";
+			$debuglog .=  "</pre><hr>\n<p>ApptResult</p><pre>";
+			$debuglog .= print_r($apptResult,true);
+			$debuglog .=  "</pre>";
+		};
+
 
 		$ApptItem->setLink($cfg_option['urlpath']. "/getappt/" . $userfeedtogen . "/".rawurlencode($apptDetails->ItemId->Id));
-#		$ApptItem->setLink("/ewscalendarfeed/getappt/" . $userfeedtogen . "/".$apptDetails->ItemId->Id);
-
 		$ApptItem->setDate( $apptDetails->Start);
 		$start=rtrim($apptDetails->Start,'zZ');
 		
 		$ApptSummary = "<em>When:</em><b> " . date("D M j Y g:ia",strtotime($apptDetails->Start))          . " to " . date("D M j Y g:ia",strtotime($apptDetails->End)) . "(" . date_default_timezone_get() .")</b>\n<br>";
-
 		# There can be different kinds of entries on the calendar. If it's a meeting we want to display
 		# 
 		if ($apptDetails->IsMeeting == 1){ 
@@ -191,6 +234,7 @@
 		$ApptItem->addElement('summary',$ApptSummary);
 		$ApptItem->addElement('content',$ApptSummary . "\n" . $apptBody, array('type'=>'html'));
 		$CalFeed->addItem($ApptItem);
+            }
         }
         # If we're debugging let's add an item to the feed for the debug info
 	if ($scriptdebug){
@@ -204,7 +248,6 @@
 		$debugdescription.="UserFeedtoGen is " . $userfeedtogen . "\n";
 		$debugdescription.="debug" . $_SERVER[argv][0] . "\n";
 		$debugdescription.="</PRE>";
-		
 		$DebugItem=$CalFeed->createNewItem();
 		$DebugItem->setTitle('DebugInfo');
 		$DebugItem->setLink("http://192.168.1.112/" . $_SERVER["REQUEST_URI"] ."/debug");
@@ -215,7 +258,7 @@
 	};
 	
 
-	$CalFeed->genarateFeed();
-        
+            $CalFeed->genarateFeed();
+
         /* Do something with the web service connection */
         stream_wrapper_restore('https');
